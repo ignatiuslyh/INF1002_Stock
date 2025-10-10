@@ -6,23 +6,17 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Results Dashboard</title>
-    <link rel="stylesheet" href="css/results.css">
-    <link rel="stylesheet" href="css/css_reset.css">
-    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/css_reset.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/metrics.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/results.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <header>
-        <img id="logo" src="images/logo.png" alt="Logo">
-        <nav>
-            <label for="hamburger">&#9776;</label>
-            <input type="checkbox" id="hamburger" />
-            <ul id="menu">
-                <li><a href="/">Home</a></li>
-                <li><a href="/metrics">Metrics</a></li>
-                <li><a href="/results">Result</a></li>
-            </ul>
-        </nav>
+        <img id="logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
         <hr>
     </header>
 
@@ -31,15 +25,10 @@
             Results for {{ results.ticker }} ({{ results.period }})
         </h1>
 
-        <!-- Predictive Model -->
+       <!-- Predictive Model -->
         {% if 'predictive_model' in selected_methods %}
         <div class="chart-card large-chart">
             <h2 class="chart-title">Predictive Model</h2>
-            {% if results.metrics.next_day_prediction %}
-                <h3 class="subheader">
-                    Tomorrow's Forecasted Close: 
-                </h3>
-            {% endif %}
             {% if results.plots.prediction %}
                 {{ results.plots.prediction|safe }}
             {% else %}

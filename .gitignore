@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / editor settings
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Vercel
+.vercel/
+
+# Jupyter notebooks checkpoints (if you use notebooks)
+.ipynb_checkpoints/

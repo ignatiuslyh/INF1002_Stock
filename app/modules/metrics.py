@@ -7,50 +7,158 @@ analyzing time-series data, particularly for financial metrics.
 
 import pandas as pd
 import numpy as np
-from .data_handler import data_handler
 import pandas as pd
-from typing import Optional
-from typing import List, Union
 
+"""
+----- SMA Analysis ------------------
+Author: Si Yun
+1. SMA Analysis
+Input:
+Objective: Smooth out short-term price fluctuations to identify the underlying trend direction over a specified period.
+parameter:
+    df: pd.DataFrame: cleaned data from data_handler
+    window_size: list of window size defined by user (datatype: int)    
+return:
+    dataframe of the calculated SMA 
+step 1. Validate inputs
+    Check that 'date' and 'close' columns exist in the DataFrame.
+    Verify that each window size is a positive integer.
+step 2. Prepare the data
+    Set 'date' as the index.
+    Retrieve the 'close' prices and convert them into a list for easier calculation.
+step 3. Perform SMA calculation
+    For each window size, compute the average closing price using the sliding window approach.
+    The first n-1 entries will be None since there's not enough data to calculate SMA.
+step 4. Store results
+    Save the computed SMA values into a new column (e.g., sma_20, sma_50) in the DataFrame.
+step 5. Return output
+    Return the updated DataFrame containing all SMA columns.
+step 6.Error handling
+    Use the except block to catch and print input or unexpected errors without crashing the program.
 
+----- Daily Returns ------------------
+Author: Xue E
+Objective:
+    Compute daily returns for a given stock using cleaned data from api_data_handler.
+Features:
+    - Input: Pandas DataFrame with columns ['date', 'open', 'high', 'low', 'close', 'volume', 'name'].
+    - Filters data by stock name and optional date range.
+    - Calculates percentage change in closing prices.
+Target:
+    - Output: DataFrame with columns ['date', 'close', 'Daily_Return'].
+Steps:
+    1. Filter data for the specified stock name.
+    2. Apply optional start_date and end_date filters.
+    3. Sort data by date to ensure chronological order.
+    4. Compute daily returns using pandas pct_change() and round to 4 decimals.
+    5. Return DataFrame with date, close, and Daily_Return columns.
+
+----- Max Profit ----------------------
+Author: Xue E
+Objective:
+    Calculate the maximum achievable profit using multiple buy-sell transactions (Valley–Peak strategy).
+Features:
+    - Input: Pandas DataFrame from api_data_handler with columns ['date', 'close', 'name'].
+    - Filters data by stock name and optional date range.
+    - Computes profit by summing all positive differences between consecutive closing prices.
+Target:
+    - Output: Float representing total maximum profit.
+Steps:
+    1. Filter data for the specified stock name.
+    2. Apply optional start_date and end_date filters.
+    3. Extract closing prices as a list.
+    4. Iterate through prices and sum all positive differences.
+    5. Return the total profit rounded to 2 decimals.
+
+    ----- Price Trend Runs ------------------
+Objective:
+    Identify consecutive sequences (runs) of price movement (up or down) in a time series dataset.
+Features:
+    - Input: Pandas DataFrame with at least the columns ['date', 'close'].
+    - Calculates the day-to-day directional change (up: 1, down: -1, no change: 0) in the 'close' price.
+    - Groups consecutive days with the same non-zero directional change into 'runs'.
+Target:
+    - Output 1 (runs): DataFrame summarizing each run with columns ['start_date', 'end_date', 'length', 'start_index', 'end_index', 'direction'].
+    - Output 2 (direction): Pandas Series representing the directional change for each observation (1, -1, or 0).
+    - Output 3 (df): The processed DataFrame used internally, including the original index, 'date', and 'close'.
+Steps:
+    1. Validate required columns ('date', 'close') and convert 'date' to datetime format.
+    2. Reset the DataFrame index to create an accessible 'index' column for run tracking.
+    3. Calculate the day-to-day directional change using pandas diff() and numpy sign().
+    4. Identify consecutive sequences of the same direction using cumulative summation on shifts in direction.
+    5. Group the data by run ID, excluding days with no change (0), to aggregate run characteristics (start/end date/index, length, and direction).
+    6. Map the directional sign (1, -1) to descriptive strings ('Up', 'Down').
+    7. Return the runs summary, the directional series, and the processed base DataFrame.
+"""
 
 # --- SMA Analysis ---
-df =data_handler('https://github.com/Eddamame/P5-4_PythonProject/blob/main/data/StockAnalysisDataset.csv?raw=true')
-# Create a new column year
-df['year'] = pd.DatetimeIndex(df['date']).year
-# filter out the Name 
-stock_name = pd.unique(df['name'])
-def calculate_sma(stock_name, window_sizes):
-    filtered_df = df[(df['name'] == stock_name) & (df['year'] > 2015)].copy()
-    filtered_df = filtered_df.set_index('date')
-    closed_price = filtered_df['close']
-    for n in window_sizes:
-        sma = []
-        for i in range(len(closed_price)):
-                if i < n - 1:
-                    sma.append(None)  # Always create the column
-                else:
-                    window = closed_price[i - n + 1 : i + 1]
-                    sma.append(round(sum(window)/n, 2))
-        filtered_df[f'sma_{n}'] = sma  # Column always exists
+def calculate_sma(df: pd.DataFrame, window_sizes: list[int]) -> pd.DataFrame:
+    try:
+        # --- Input validation ---
+        if 'date' not in df.columns:
+            raise KeyError("'date' column not found in dataframe")
+        if 'close' not in df.columns:
+            raise KeyError("'close' column not found in dataframe")
+        if df.empty:
+            raise ValueError("Input DataFrame is empty.")
+        if not all(isinstance(n, int) and n > 0 for n in window_sizes):
+            raise ValueError("window_sizes must be positive integers.")
 
-    return filtered_df
+        # --- Step 1: Prepare data ---
+        df = df.copy().set_index('date')
+        close_prices = df['close'].tolist()
+
+        # --- Step 2: Sliding window SMA calculation ---
+        for n in window_sizes:
+            sma = []
+            window = []
+            window_sum = 0.0
+
+            for price in close_prices:
+                window.append(price)
+                window_sum += price
+
+                # Keep window size fixed
+                if len(window) > n:
+                    window_sum -= window.pop(0)
+
+                # Only calculate SMA when window full
+                if len(window) == n:
+                    sma.append(round(window_sum / n, 2))
+                else:
+                    sma.append(None)
+
+            df[f'sma_{n}'] = sma
+
+        return df
+
+    except (KeyError, ValueError) as e:
+        print(f"Input Error: {e}")
+    except Exception as e:
+        print(f"Unexpected Error: {e}")
 
 # --- Daily Returns --- 
-def calculate_daily_returns(data: pd.DataFrame, stock_name: str,
-                             start_date: Optional[str] = None,
-                             end_date: Optional[str] = None) -> pd.DataFrame:
+def calculate_daily_returns(data):
 
-    # Formula: Daily Return = (Today's Close - Yesterday's Close) / Yesterday's Close    Args:
-    # data (pd.DataFrame): DataFrame containing stock data with a 'Close' column
     try:
-        stock_data = data[data['name'] == stock_name].copy()
-
-        if start_date:
-            stock_data = stock_data[stock_data['date'] >= pd.to_datetime(start_date)]
-        if end_date:
-            stock_data = stock_data[stock_data['date'] <= pd.to_datetime(end_date)]
+        # Check if required columns exist
+        if 'date' not in data.columns:
+            raise ValueError("'date' column not found in dataframe")
+        if 'close' not in data.columns:
+            raise ValueError("'close' column not found in dataframe")
         
+        # Select required columns and copy
+        stock_data = data[['date', 'close']].copy()
+
+         # Convert date to datetime if not already
+        if not pd.api.types.is_datetime64_any_dtype(stock_data['date']):
+            stock_data['date'] = pd.to_datetime(stock_data['date'])
+        
+        # Check if we have data
+        if len(stock_data) == 0:
+            raise ValueError("No data available")
+        
+        # Ensure data is sorted by date
         stock_data = stock_data.sort_values('date')
         
         # Calculate daily returns using percentage change
@@ -64,28 +172,17 @@ def calculate_daily_returns(data: pd.DataFrame, stock_name: str,
 
 
 # --- Profit Calculator --- 
-def calculate_max_profit(data: pd.DataFrame, stock_name: str,
-                         start_date: Optional[str] = None,
-                         end_date: Optional[str] = None) -> float:
+def calculate_max_profit(data):
     """
     Calculates maximum profit achievable through multiple buy/sell transactions
-    using the Valley-Peak approach (Greedy Algorithm).
-    
-    Args:
-        prices: List or Series of stock prices
-    
-    Returns:
-        Maximum achievable profit
+    using the Valley-Peak approach (Greedy Algorithm).  
     """
     try:
-        stock_data = data[data['name'] == stock_name].copy()
-
-        if start_date:
-            stock_data = stock_data[stock_data['date'] >= pd.to_datetime(start_date)]
-        if end_date:
-            stock_data = stock_data[stock_data['date'] <= pd.to_datetime(end_date)]
+        # Check if required columns exist
+        if 'close' not in data.columns:
+            raise ValueError("'close' column not found in dataframe")
         
-        prices = stock_data['close'].tolist()
+        prices = data['close'].tolist()
 
         if len(prices) < 2:
             return 0.0
@@ -99,80 +196,6 @@ def calculate_max_profit(data: pd.DataFrame, stock_name: str,
         print(f"Error calculating max profit: {e}")
         return 0.0
  
-# --- Upward and Downward Run Analysis ---
-# older version 
-# def old_calculate_runs(data):
-#     try:
-#         # Check if required columns exist
-#         if 'date' not in data.columns:
-#             raise ValueError("'date' column not found in dataframe")
-#         if 'close' not in data.columns:
-#             raise ValueError("'close' column not found in dataframe")
-        
-#         # Select required columns and copy
-#         prices = data[['date', 'close']].copy()
-        
-#         # Convert date to datetime if not already
-#         if not pd.api.types.is_datetime64_any_dtype(prices['date']):
-#             prices['date'] = pd.to_datetime(prices['date'])
-        
-#         # Check if we have data
-#         if len(prices) == 0:
-#             raise ValueError("No data available")
-        
-#         # Calculate daily changes
-#         close_changes = prices['close'].diff()
-        
-#         # Convert to direction: 1 (up), -1 (down), 0 (no change)
-#         direction = np.sign(close_changes)
-#         direction = direction.fillna(0).astype(int)
-        
-#         # Initialize run tracking
-#         runs = []
-#         current_run_length = 1
-#         current_direction = direction.iloc[0]
-        
-#         # Iterate through directions to find runs
-#         for i in range(1, len(direction)):
-#             if direction.iloc[i] == current_direction and current_direction != 0:
-#                 current_run_length += 1
-#             else:
-#                 # Record the completed run
-#                 if current_direction != 0:
-#                     start_idx = i - current_run_length
-#                     end_idx = i - 1
-                    
-#                     runs.append({
-#                         'start_date': prices.iloc[start_idx]['date'],
-#                         'end_date': prices.iloc[end_idx]['date'],
-#                         'direction': 'Up' if current_direction == 1 else 'Down',
-#                         'length': current_run_length,
-#                         'start_index': start_idx,
-#                         'end_index': end_idx
-#                     })
-                
-#                 current_run_length = 1
-#                 current_direction = direction.iloc[i]
-        
-#         # Record the final run
-#         if current_direction != 0:
-#             start_idx = len(prices) - current_run_length
-#             end_idx = len(prices) - 1
-            
-#             runs.append({
-#                 'start_date': prices.iloc[start_idx]['date'],
-#                 'end_date': prices.iloc[end_idx]['date'],
-#                 'direction': 'Up' if current_direction == 1 else 'Down',
-#                 'length': current_run_length,
-#                 'start_index': start_idx,
-#                 'end_index': end_idx
-#             })
-        
-#         return pd.DataFrame(runs), direction, prices
-        
-#     except Exception as e:
-#         print(f"Error in calculate_runs: {e}")
-#         return pd.DataFrame(), np.array([]), pd.DataFrame()
 
 def calculate_runs(data):
 
