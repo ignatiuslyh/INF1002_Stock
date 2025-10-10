@@ -239,9 +239,9 @@ def forecast_prices(data, target_column, n_days: int):
             raise KeyError(f"Dataframe is missing one of the columns: {required_cols}")
             
         print(f"\n--- Predicting Next {n_days} Day(s) ---")
-        
-        # Step 1: Train the model on the entie historical dataset
-        features = data.drop(columns=['date', target_column]).valuesWh
+
+        # Step 1: Train the model on the entire historical dataset
+        features = data.drop(columns=['date', target_column]).values
         target = data[target_column].values
         coefficients = calculate_coefficients(features, target)
 
